@@ -29,7 +29,7 @@ from os import getcwd
 from os.path import exists
 from random import randint, choice
 from subprocess import Popen
-from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 from lzma import LZMADecompressor
 import tarfile
 from . import blockimgdiff
@@ -81,7 +81,7 @@ formats = ([b'PK', "zip"], [b'OPPOENCRYPT!', "ozip"], [b'7z', "7z"], [b'\x53\xef
            [b'\xfa\xff\xfa\xff', 'pac', 2116], [b"NTPI", 'NTPI'], [b'\x56\x19\xb5\x27', 'amlogic', 8],
            [b"-rom1fs-", 'romfs'], [b'UBI#', "ubi"], [b"sqsh", "squashfs"], [b'hsqs', 'squashfs'],
            [b"\x85\x19", "jffs2"], [b'RKFW', 'rkfw'], [b'RKAF', 'rkaf'],
-           [b'EFI PART', 'gpt', 0x200], [b'SPLASH!!', 'splash', 1024],
+           [b'EFI PART', 'gpt',0x200],[b'SPLASH!!', 'splash', 1024],
            [b'###\x00|\x00\x00\x00LOGO_TABLE\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00P',
             'guoke_logo']
            )
@@ -290,7 +290,7 @@ class Sdat2img:
         with open(self.transfer_list_file, 'r', encoding='utf-8') as trans_list:
             # First line in transfer list is the version number
             # Second line in transfer list is the total number of blocks we expect to write
-            if (version := int(trans_list.readline())) >= 2 & (new_blocks := int(trans_list.readline())):
+            if (version := int(trans_list.readline())) >= 2 and (new_blocks := int(trans_list.readline())):
                 # Third line is how many stash entries are needed simultaneously
                 trans_list.readline()
                 # Fourth line is the maximum number of blocks that will be stashed simultaneously
@@ -468,10 +468,7 @@ def remove_duplicate(file_) -> None:
     del data
 
 
-_EXECUTOR = ThreadPoolExecutor(max_workers=10)
-
-
-def create_thread(func, *args, join=False):
+def create_thread(func, *args, join=False, deamon: bool = True):
     """
     Multithreaded running tasks
     :param deamon:
@@ -480,9 +477,10 @@ def create_thread(func, *args, join=False):
     :param join:if wait the task
     :return:
     """
-    future = _EXECUTOR.submit(func, *args)
+    t = Thread(target=func, args=args, daemon=deamon)
+    t.start()
     if join:
-        future.result()
+        t.join()
 
 
 def simg2img(path: str):
@@ -747,11 +745,12 @@ class States:
     development = False
     inited = False
     open_source_license = "GNU AFFERO GENERAL PUBLIC LICENSE V3"
-    root = False
     if os.name == 'posix':
         root = os.getuid() == 0
     elif os.name == 'nt':
         root = windll.shell32.IsUserAnAdmin()
+    else:
+        root: bool = False
 
 
 states = States()

@@ -44,13 +44,13 @@ from src.core.unkdz import KDZFileTools
 from ..core.payload_extract import extract_partitions_from_payload
 from ..core.xtc_recovery_helper import decrypt as decrypt_xtc
 from src.porttool.ui import MyUI
-pyi_splash_available = False
+
 if platform.system() != 'Darwin':
     try:
         import pyi_splash
 
         pyi_splash.update_text('Loading ...')
-        pyi_splash_available = True
+        pyi_splash.close()
     except ModuleNotFoundError:
         ...
 import os.path
@@ -4663,9 +4663,11 @@ class MpkStore(Toplevel):
                 self.init_repo()  # Re-initialize repository related settings.
                 create_thread(self.get_db, True)  # Refresh database from the new repository in a separate thread.
 
+        def on_cancel_repo():
+            """Handles the Cancel button click in the repository modification dialog."""
+            a.destroy()  # Close the dialog.
 
-
-        ttk.Button(button_frame_repo, text=getattr(lang, 'cancel', "Cancel"), command=a.destroy).pack(side=LEFT,
+        ttk.Button(button_frame_repo, text=getattr(lang, 'cancel', "Cancel"), command=on_cancel_repo).pack(side=LEFT,
                                                                                                            padx=(0, 5),
                                                                                                            expand=True,
                                                                                                            fill=X)
@@ -7634,6 +7636,7 @@ class ParseCmdline:
             cprint("Workdir or Output Dir Not Exist!")
             return
 
+
 def __init__tk(args: list):
     if not os.path.exists(temp):
         re_folder(temp, quiet=True)
@@ -7646,7 +7649,6 @@ def __init__tk(args: list):
         logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s')
     global win
     win = Tool()
-    win.withdraw()
     if os.name == 'nt':
         set_title_bar_color(win)
     animation.master = win
@@ -7686,10 +7688,7 @@ def __init__tk(args: list):
         if not verify.state:
             Active(verify, settings, win, images, lang).gui()
     win.update()
-    if pyi_splash_available:
-        pyi_splash.close()
-    win.deiconify()
-    win.focus_force()
+
     move_center(win)
     win.loops.append(win.get_time)
     if settings.check_upgrade == '1':
